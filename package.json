@@ -1,6 +1,6 @@
 {
   "name": "MyWatchface",
-  "author": "MakeAwesomeHappen",
+  "author": "Jacob Duniam",
   "version": "1.0.0",
   "keywords": ["pebble-app"],
   "private": true,
@@ -25,7 +25,14 @@
       "dummy"
     ],
     "resources": {
-      "media": []
+      "media": [
+        {
+          "characterRegex": "[:0-9]",
+          "type": "font",
+          "name": "MY_FONT_FACE_34",
+          "file": "MyFontFace.ttf"
+        }
+      ]
     }
   }
 }

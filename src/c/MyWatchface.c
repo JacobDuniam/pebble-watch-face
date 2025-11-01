@@ -1,56 +1,81 @@
 #include <pebble.h>
+#include <stdbool.h>
 
 static Window *s_window;
-static TextLayer *s_text_layer;
+static TextLayer *s_hour_layer;
+static TextLayer *s_minute_layer;
+static TextLayer *s_message_layer;
+static GFont s_font;
 
-static void prv_select_click_handler(ClickRecognizerRef recognizer, void *context) {
-  text_layer_set_text(s_text_layer, "Select");
-}
+const int FONT_HEIGHT = 40;
 
-static void prv_up_click_handler(ClickRecognizerRef recognizer, void *context) {
-  text_layer_set_text(s_text_layer, "Up");
-}
-
-static void prv_down_click_handler(ClickRecognizerRef recognizer, void *context) {
-  text_layer_set_text(s_text_layer, "Down");
-}
-
-static void prv_click_config_provider(void *context) {
-  window_single_click_subscribe(BUTTON_ID_SELECT, prv_select_click_handler);
-  window_single_click_subscribe(BUTTON_ID_UP, prv_up_click_handler);
-  window_single_click_subscribe(BUTTON_ID_DOWN, prv_down_click_handler);
-}
-
-static void prv_window_load(Window *window) {
+static void prv_window_load(Window *window)
+{
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
 
-  s_text_layer = text_layer_create(GRect(0, 72, bounds.size.w, 20));
-  text_layer_set_text(s_text_layer, "Press a button");
-  text_layer_set_text_alignment(s_text_layer, GTextAlignmentCenter);
-  layer_add_child(window_layer, text_layer_get_layer(s_text_layer));
+  s_hour_layer = text_layer_create(GRect(0, 0, bounds.size.w, FONT_HEIGHT));
+  s_minute_layer = text_layer_create(GRect(0, FONT_HEIGHT, bounds.size.w, FONT_HEIGHT));
+  s_message_layer = text_layer_create(GRect(0, bounds.size.h / 2, bounds.size.w, bounds.size.h / 2));
+
+  text_layer_set_text(s_message_layer, "Hello World!!!");
+  text_layer_set_text_alignment(s_hour_layer, GTextAlignmentRight);
+  text_layer_set_text_alignment(s_minute_layer, GTextAlignmentRight);
+
+  text_layer_set_text_alignment(s_message_layer, GTextAlignmentCenter);
+
+  text_layer_set_font(s_message_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
+  text_layer_set_font(s_hour_layer, s_font);
+  text_layer_set_font(s_minute_layer, s_font);
+
+  layer_add_child(window_layer, text_layer_get_layer(s_hour_layer));
+  layer_add_child(window_layer, text_layer_get_layer(s_minute_layer));
+  layer_add_child(window_layer, text_layer_get_layer(s_message_layer));
 }
 
-static void prv_window_unload(Window *window) {
-  text_layer_destroy(s_text_layer);
+static void prv_window_unload(Window *window)
+{
+  text_layer_destroy(s_hour_layer);
+  text_layer_destroy(s_minute_layer);
+  text_layer_destroy(s_message_layer);
 }
 
-static void prv_init(void) {
+static void handle_minute_tick(struct tm *tick_time, TimeUnits units_changed)
+{
+  static char s_hour_text[] = "00";
+  strftime(s_hour_text, sizeof(s_hour_text), "%H", tick_time);
+  text_layer_set_text(s_hour_layer, s_hour_text);
+
+  static char s_minute_text[] = "00";
+  strftime(s_minute_text, sizeof(s_minute_text), "%M", tick_time);
+  text_layer_set_text(s_minute_layer, s_minute_text);
+}
+
+static void prv_init(void)
+{
   s_window = window_create();
-  window_set_click_config_provider(s_window, prv_click_config_provider);
-  window_set_window_handlers(s_window, (WindowHandlers) {
-    .load = prv_window_load,
-    .unload = prv_window_unload,
-  });
+  s_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_MY_FONT_FACE_34));
+
+  window_set_window_handlers(s_window, (WindowHandlers){
+                                           .load = prv_window_load,
+                                           .unload = prv_window_unload,
+                                       });
   const bool animated = true;
   window_stack_push(s_window, animated);
+
+  tick_timer_service_subscribe(MINUTE_UNIT, handle_minute_tick);
 }
 
-static void prv_deinit(void) {
+static void prv_deinit(void)
+{
   window_destroy(s_window);
+
+  tick_timer_service_unsubscribe();
+  fonts_unload_custom_font(s_font);
 }
 
-int main(void) {
+int main(void)
+{
   prv_init();
 
   APP_LOG(APP_LOG_LEVEL_DEBUG, "Done initializing, pushed window: %p", s_window);
